@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>量潮客户支持领域模型 · Ticket × Solution</title>
+<style>
+  :root {
+    --bg: #f6f8fa;
+    --panel: #ffffff;
+    --border: #d0d7de;
+    --text: #1f2328;
+    --muted: #59636e;
+    --accent: #0969da;
+    --ticket: #1a7f37;
+    --solution: #9a6700;
+    --code-bg: #f6f8fa;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    padding: 32px 16px 64px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+
+  /* 头部 */
+  header { text-align: center; padding: 24px 0 40px; }
+  header h1 { font-size: 26px; font-weight: 700; letter-spacing: .5px; }
+  header p { color: var(--muted); margin-top: 10px; font-size: 15px; }
+  header .entities { margin-top: 14px; font-size: 14px; }
+  .badge {
+    display: inline-block; padding: 3px 12px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; margin: 0 6px;
+  }
+  .badge.ticket { background: #dafbe1; color: var(--ticket); border: 1px solid #2da44e33; }
+  .badge.solution { background: #fff8c5; color: var(--solution); border: 1px solid #bf870033; }
+  .arrow { color: var(--muted); margin: 0 4px; }
+
+  /* 区块 */
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 19px; font-weight: 700;
+    padding-bottom: 8px; margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 15px; margin: 20px 0 10px; }
+  .lead { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+
+  /* 实体卡片 */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+  }
+  .card h3 { margin-top: 0; }
+  .card .one-liner { font-size: 14px; color: var(--muted); }
+
+  /* 字段表 */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 12px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; width: 130px; white-space: nowrap; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px; background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 5px;
+  }
+
+  /* Issue 风格评论流 */
+  .issue {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; margin-top: 14px;
+  }
+  .issue-head { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .issue-head .num { color: var(--muted); font-weight: 500; }
+  .issue-head h4 { font-size: 16px; margin-top: 2px; }
+  .issue-head .meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .issue-body { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .comment { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .comment:last-child { border-bottom: none; }
+  .comment .who { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .comment .who .role {
+    font-weight: 400; font-size: 11.5px; border-radius: 999px;
+    padding: 1px 8px; margin-left: 6px;
+  }
+  .role.customer { background: #ddf4ff; color: #0969da; }
+  .role.support { background: #dafbe1; color: #1a7f37; }
+  .role.ai { background: #fbefff; color: #8250df; }
+  .comment .when { color: var(--muted); font-size: 12.5px; }
+
+  /* Tab 切换 */
+  .tabs { display: flex; gap: 4px; margin-top: 26px; border-bottom: 1px solid var(--border); }
+  .tab {
+    border: 1px solid transparent; border-bottom: none; background: none;
+    padding: 8px 14px; font-size: 13.5px; cursor: pointer; color: var(--muted);
+    border-radius: 6px 6px 0 0; font-family: inherit;
+  }
+  .tab.active { background: var(--panel); border-color: var(--border); color: var(--text); font-weight: 600; }
+  .pane { display: none; }
+  .pane.active { display: block; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; overflow-x: auto;
+    font-size: 12.5px; line-height: 1.5;
+  }
+  pre code { background: none; border: none; padding: 0; }
+
+  /* 蒸馏循环 */
+  .loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 10px; }
+  @media (max-width: 720px) { .loop { grid-template-columns: 1fr; } }
+  .step { background: var(--panel); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius); position: relative; }
+  .step:not(:last-child)::after {
+    content: "→"; position: absolute; right: -11px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 18px; z-index: 1;
+  }
+  @media (max-width: 720px) { .step::after { content: "↓" !important; right: auto; left: 50%; top: auto; bottom: -18px; transform: translateX(-50%); } }
+  .step .n {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 12px; font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .step h5 { font-size: 14px; margin-bottom: 6px; }
+  .step p { font-size: 13px; color: var(--muted); }
+  .step.rule { border-style: dashed; border-color: var(--solution); }
+  .step.rule h5 { color: var(--solution); }
+
+  /* 档案镜像 */
+  .mirror { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+  @media (max-width: 720px) { .mirror { grid-template-columns: 1fr; } }
+  .mirror pre { font-size: 12px; margin: 0; }
+
+  /* 建模思想 */
+  ol.ideas { margin: 0; padding: 0; list-style: none; counter-reset: idea; }
+  ol.ideas li {
+    counter-increment: idea; position: relative;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px 14px 56px; margin-bottom: 10px;
+  }
+  ol.ideas li::before {
+    content: counter(idea); position: absolute; left: 16px; top: 14px;
+    width: 26px; height: 26px; border-radius: 50%; background: var(--code-bg);
+    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--accent);
+  }
+  ol.ideas li b { display: block; font-size: 14.5px; margin-bottom: 3px; }
+  ol.ideas li span { font-size: 13.5px; color: var(--muted); }
+
+  footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 48px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>量潮客户支持 · 领域模型</h1>
+    <p>核心模型只有一个关系：一次问题的提出与解答（Ticket），蒸馏为沉淀下来的可复用知识（Solution）。</p>
+    <div class="entities">
+      <span class="badge ticket">Ticket 工单</span>
+      <span class="arrow">×</span>
+      <span class="badge solution">Solution 解决方案</span>
+    </div>
+  </header>
+
+  <!-- 实体 -->
+  <section>
+    <h2>两个实体</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Ticket <span style="color:var(--muted);font-weight:400;font-size:13px;">工单 · 对齐 GitHub Issue</span></h3>
+        <p class="one-liner">一次客户问题的提出与解答。一问多答 = issue + comments，没有独立的 Reply 实体。</p>
+        <table>
+          <tr><th>id</th><td>uuid</td></tr>
+          <tr><th>number</th><td>仓库内递增编号，对外引用用 <code>#192</code></td></tr>
+          <tr><th>title / body</th><td>问题标题与详情（Markdown）</td></tr>
+          <tr><th>state</th><td><code>open</code> | <code>closed</code>，无"已解决"中间态</td></tr>
+          <tr><th>author / labels</th><td>提交者；轻量标签（faq / bug / feature-request）</td></tr>
+          <tr><th>comments</th><td>时间序交流流，客户 / 支持 / ai 同流发言</td></tr>
+          <tr><th>created_at / closed_at</th><td>提出 / 关闭时间</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Solution <span style="color:var(--muted);font-weight:400;font-size:13px;">解决方案</span></h3>
+        <p class="one-liner">从已 closed 的 Ticket 蒸馏创建，不允许凭空出现——每条知识都有真实案例背书。</p>
+        <table>
+          <tr><th>id</th><td>uuid</td></tr>
+          <tr><th>title</th><td>"什么问题"一句话</td></tr>
+          <tr><th>content</th><td>解答本体（Markdown），来源引用写在开头；失效走归档不删除</td></tr>
+        </table>
+        <div style="margin-top:12px;font-size:13px;color:var(--muted);">
+          适用场景 / 解答 / 升级判据 / 来源与复用 —— 是 content 的推荐写法，不是模型字段。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ticket 示例 -->
+  <section>
+    <h2>Ticket 实例 · #192</h2>
+    <p class="lead">字段对齐 GitHub Issue，因此渲染层可以直接复用 Issue 的视觉语言。示例基于 2026-09-01 实训基地群真实问答整理。</p>
+    <div class="tabs">
+      <button class="tab active" data-pane="issue-pane">Issue 视图</button>
+      <button class="tab" data-pane="json-pane">JSON</button>
+    </div>
+
+    <div id="issue-pane" class="pane active">
+      <div class="issue">
+        <div class="issue-head">
+          <span class="num">#192</span> <span class="badge ticket" style="background:#dafbe1;color:#1a7f37;">closed</span>
+          <h4>代金券怎么用？</h4>
+          <div class="meta">黄亮 提交 · 2026-09-01 15:04 · 标签 faq</div>
+        </div>
+        <div class="issue-body">收到 100 元券，想约老师一对一，可以直接指定对接人吗？</div>
+        <div class="comment">
+          <div class="who">赵子奕 <span class="role support">支持</span></div>
+          <div>券用于一对一沟通，群内沟通免费。预约价格与职级对应，见价目表。</div>
+          <div class="when">2026-09-01 17:14</div>
+        </div>
+        <div class="comment">
+          <div class="who">ai <span class="role ai">AI</span></div>
+          <div>参考 Solution #voucher-usage：挣券渠道为课堂实训任务（100 券/个）与众包（1000 元/任务）。</div>
+          <div class="when">2026-09-01 17:20</div>
+        </div>
+      </div>
+      <p class="lead" style="margin-top:10px;">AI 的回答也是一条 comment——人工 / AI 的区分是 <code>comment.author</code> 的属性，无需人参与比例由应用层从评论流推导。</p>
+    </div>
+
+    <div id="json-pane" class="pane">
+      <pre><code>{
+  "id": "t-0192",
+  "number": 192,
+  "title": "代金券怎么用？",
+  "body": "收到 100 元券，想约老师一对一，可以直接指定对接人吗？",
+  "state": "closed",
+  "author": "黄亮",
+  "labels": ["faq"],
+  "comments": [
+    {
+      "author": "赵子奕",
+      "body": "券用于一对一沟通，群内沟通免费。预约价格与职级对应，见价目表。",
+      "created_at": "2026-09-01T17:14:00+08:00"
+    },
+    {
+      "author": "ai",
+      "body": "参考 Solution #voucher-usage：挣券渠道为课堂实训任务（100 券/个）与众包（1000 元/任务）。",
+      "created_at": "2026-09-01T17:20:00+08:00"
+    }
+  ],
+  "created_at": "2026-09-01T15:04:00+08:00",
+  "closed_at": "2026-09-01T17:16:00+08:00"
+}</code></pre>
+    </div>
+  </section>
+
+  <!-- Solution 示例 -->
+  <section>
+    <h2>Solution 实例 · #voucher-usage</h2>
+    <div class="mirror">
+      <div class="card">
+        <h3>Solution JSON</h3>
+        <pre><code>{
+  "id": "s-voucher-usage",
+  "title": "代金券怎么用、怎么挣",
+  "content": "来源：Ticket #192\n\n**使用规则**：代金券用于一对一沟通（按小时计价）；群内沟通免费。\n\n**挣券渠道**：课堂实训任务 100 券/个；众包任务基准 1000 元/个。\n\n**注意**：定价纠纷、兑换争议转人工核实，AI 不代答。"
+}</code></pre>
+      </div>
+      <div class="card">
+        <h3>档案条目镜像</h3>
+        <p class="one-liner" style="margin-bottom:10px;">Solution 与第二大脑档案仓库条目一一对应、双向同步——应用写数据，人也能直接在仓库维护。</p>
+        <pre><code># 代金券怎么用、怎么挣
+## 适用场景
+## 解答
+## 升级判据
+## 来源与复用</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 蒸馏循环 -->
+  <section>
+    <h2>知识从实例中长出</h2>
+    <p class="lead">循环埋在 Ticket 与 Solution 的关系里，是模型结构本身，不是口号。</p>
+    <div class="loop">
+      <div class="step">
+        <span class="n">1</span>
+        <h5>问题进来</h5>
+        <p>客户提问形成 Ticket，open，评论流开始。</p>
+      </div>
+      <div class="step">
+        <span class="n">2</span>
+        <h5>解答并关闭</h5>
+        <p>支持人员 / AI 在评论流中应答，解答完成即 closed。</p>
+      </div>
+      <div class="step rule">
+        <span class="n" style="background:var(--solution);">3</span>
+        <h5>蒸馏为 Solution</h5>
+        <p>从已 closed 的 Ticket 蒸馏知识，来源引用写进 content 开头。</p>
+      </div>
+      <div class="step">
+        <span class="n">4</span>
+        <h5>复用加速</h5>
+        <p>后续同类问题由 AI 直接参考 Solution 应答，更快、更少升级。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 建模思想 -->
+  <section>
+    <h2>建模思想</h2>
+    <ol class="ideas">
+      <li><b>领域只说业务语言</b><span>模型里只有 Ticket 和 Solution。语义检索、存储引擎、LLM 供应商都是技术选型，归应用层——换个技术栈，模型原样成立。</span></li>
+      <li><b>两个字段哲学：问答与知识</b><span>业务抽象到底只有两个动作：回答问题（Ticket）、积累知识（Solution）。状态、优先级、分派、统计都是派生需求。</span></li>
+      <li><b>知识从实例中长出</b><span>Solution 不允许凭空创建。解答 Ticket → 蒸馏 Solution → 参考复用 → 更多问题被更快解答，循环是模型结构本身。</span></li>
+      <li><b>格式沿用成熟惯例</b><span>Ticket 对齐 GitHub Issue，语义已被千万开发者验证：一问多答就是评论流，状态就是 open/closed，引用就是 #number。目标是零学习成本。</span></li>
+      <li><b>模型与档案互为镜像</b><span>qtcloud-support 是模型的可部署实现，档案仓库是人可维护的形态。两者一一对应、双向同步，数据不属于任何一个端。</span></li>
+    </ol>
+  </section>
+
+  <footer>量潮客户支持实验室 · 依据 docs/specification（quanttide-specification-of-customer-support v0.0.1）建模</footer>
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+      document.querySelectorAll('.pane').forEach(function (p) { p.classList.remove('active'); });
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.pane).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
