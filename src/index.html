@@ -3,335 +3,483 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>量潮客户支持领域模型 · Ticket × Solution</title>
+<title>支持云闭环原型 · 数据源：data/profile</title>
 <style>
   :root {
-    --bg: #f6f8fa;
-    --panel: #ffffff;
-    --border: #d0d7de;
-    --text: #1f2328;
-    --muted: #59636e;
-    --accent: #0969da;
-    --ticket: #1a7f37;
-    --solution: #9a6700;
-    --code-bg: #f6f8fa;
-    --radius: 8px;
+    --bg: #f6f8fa; --panel: #ffffff; --border: #d0d7de;
+    --text: #1f2328; --muted: #59636e; --accent: #0969da;
+    --ticket: #1a7f37; --solution: #9a6700; --danger: #cf222e;
+    --code-bg: #f6f8fa; --radius: 8px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.65;
-    padding: 32px 16px 64px;
+    background: var(--bg); color: var(--text); line-height: 1.6; padding: 24px 16px 64px;
   }
-  .wrap { max-width: 920px; margin: 0 auto; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  header { text-align: center; padding: 12px 0 28px; }
+  header h1 { font-size: 24px; font-weight: 700; }
+  header p { color: var(--muted); margin-top: 8px; font-size: 14px; }
+  header .src {
+    display: inline-block; margin-top: 10px; font-size: 12px; color: var(--muted);
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 999px; padding: 3px 14px;
+  }
+  h2 { font-size: 17px; font-weight: 700; padding-bottom: 8px; margin: 28px 0 14px; border-bottom: 1px solid var(--border); }
+  h2 .tag { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 8px; }
+  .muted { color: var(--muted); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
 
-  /* 头部 */
-  header { text-align: center; padding: 24px 0 40px; }
-  header h1 { font-size: 26px; font-weight: 700; letter-spacing: .5px; }
-  header p { color: var(--muted); margin-top: 10px; font-size: 15px; }
-  header .entities { margin-top: 14px; font-size: 14px; }
-  .badge {
-    display: inline-block; padding: 3px 12px; border-radius: 999px;
-    font-size: 13px; font-weight: 600; margin: 0 6px;
-  }
-  .badge.ticket { background: #dafbe1; color: var(--ticket); border: 1px solid #2da44e33; }
-  .badge.solution { background: #fff8c5; color: var(--solution); border: 1px solid #bf870033; }
-  .arrow { color: var(--muted); margin: 0 4px; }
+  /* 布局 */
+  .cols { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
 
-  /* 区块 */
-  section { margin-bottom: 40px; }
-  h2 {
-    font-size: 19px; font-weight: 700;
-    padding-bottom: 8px; margin-bottom: 18px;
-    border-bottom: 1px solid var(--border);
-  }
-  h3 { font-size: 15px; margin: 20px 0 10px; }
-  .lead { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+  /* 问答台 */
+  #chat { height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 85%; padding: 9px 12px; border-radius: 10px; font-size: 13.5px; white-space: pre-wrap; }
+  .msg.user { align-self: flex-end; background: #0969da; color: #fff; }
+  .msg.ai { align-self: flex-start; background: #f6f8fa; border: 1px solid var(--border); }
+  .msg.human { align-self: flex-start; background: #fff8c5; border: 1px solid #bf870033; }
+  .msg.sys { align-self: center; background: none; border: 1px dashed var(--border); color: var(--muted); font-size: 12.5px; text-align: center; }
+  .msg .role-tag { display: block; font-size: 11px; font-weight: 700; margin-bottom: 3px; }
+  .msg.ai .role-tag { color: var(--accent); }
+  .msg.human .role-tag { color: var(--solution); }
+  .msg .src { display: block; margin-top: 6px; font-size: 11.5px; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 5px; }
 
-  /* 实体卡片 */
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
-  .card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 18px 20px;
+  .askbar { display: flex; gap: 8px; margin-top: 10px; }
+  .askbar input { flex: 1; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13.5px; font-family: inherit; }
+  .askbar button { padding: 9px 18px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 13.5px; cursor: pointer; }
+  .askbar button:disabled { opacity: .5; cursor: default; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip {
+    border: 1px solid var(--border); background: var(--panel); border-radius: 999px;
+    padding: 3px 11px; font-size: 12px; cursor: pointer; color: var(--muted); font-family: inherit;
   }
-  .card h3 { margin-top: 0; }
-  .card .one-liner { font-size: 14px; color: var(--muted); }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* 字段表 */
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 12px; }
-  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; width: 130px; white-space: nowrap; }
-  code {
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 12.5px; background: var(--code-bg); border: 1px solid var(--border);
-    border-radius: 4px; padding: 1px 5px;
-  }
+  /* markdown 渲染 */
+  .md p { margin: 4px 0; }
+  .md ul { margin: 4px 0 4px 18px; }
+  .md li { margin: 2px 0; }
+  .md strong { font-weight: 700; }
+  .md table { border-collapse: collapse; margin: 6px 0; font-size: 12.5px; width: 100%; }
+  .md th, .md td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
+  .md th { background: var(--code-bg); font-weight: 600; }
+  .md a { color: var(--accent); }
 
-  /* Issue 风格评论流 */
-  .issue {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: var(--radius); overflow: hidden; margin-top: 14px;
-  }
-  .issue-head { padding: 16px 20px; border-bottom: 1px solid var(--border); }
-  .issue-head .num { color: var(--muted); font-weight: 500; }
-  .issue-head h4 { font-size: 16px; margin-top: 2px; }
-  .issue-head .meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
-  .issue-body { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 14px; }
-  .comment { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 14px; }
-  .comment:last-child { border-bottom: none; }
-  .comment .who { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-  .comment .who .role {
-    font-weight: 400; font-size: 11.5px; border-radius: 999px;
-    padding: 1px 8px; margin-left: 6px;
-  }
-  .role.customer { background: #ddf4ff; color: #0969da; }
-  .role.support { background: #dafbe1; color: #1a7f37; }
-  .role.ai { background: #fbefff; color: #8250df; }
-  .comment .when { color: var(--muted); font-size: 12.5px; }
+  /* 知识库 */
+  .kb-list { max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .kb-item { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+  .kb-item:hover { border-color: var(--accent); }
+  .kb-item.active { border-color: var(--accent); background: #f0f6ff; }
+  .kb-item h4 { font-size: 13.5px; font-weight: 600; }
+  .kb-item .meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .kb-detail { border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; padding: 12px; font-size: 13px; max-height: 400px; overflow-y: auto; }
+  .kb-detail .sec { margin-bottom: 8px; }
+  .kb-detail .sec-title { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 2px; }
 
-  /* Tab 切换 */
-  .tabs { display: flex; gap: 4px; margin-top: 26px; border-bottom: 1px solid var(--border); }
-  .tab {
-    border: 1px solid transparent; border-bottom: none; background: none;
-    padding: 8px 14px; font-size: 13.5px; cursor: pointer; color: var(--muted);
-    border-radius: 6px 6px 0 0; font-family: inherit;
-  }
-  .tab.active { background: var(--panel); border-color: var(--border); color: var(--text); font-weight: 600; }
-  .pane { display: none; }
-  .pane.active { display: block; }
-  pre {
-    background: var(--code-bg); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 16px; overflow-x: auto;
-    font-size: 12.5px; line-height: 1.5;
-  }
-  pre code { background: none; border: none; padding: 0; }
+  /* 案例流 */
+  .cases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 860px) { .cases { grid-template-columns: 1fr; } }
+  .case { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; }
+  .case h4 { font-size: 14px; margin-bottom: 4px; }
+  .case .q { color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }
+  .case .field { margin-top: 6px; }
+  .case .field b { color: var(--muted); font-size: 12px; }
+  .case .distilled { display: inline-block; margin-top: 8px; font-size: 11.5px; border-radius: 999px; padding: 1px 9px; background: #dafbe1; color: var(--ticket); }
 
-  /* 蒸馏循环 */
-  .loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 10px; }
-  @media (max-width: 720px) { .loop { grid-template-columns: 1fr; } }
-  .step { background: var(--panel); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius); position: relative; }
-  .step:not(:last-child)::after {
-    content: "→"; position: absolute; right: -11px; top: 50%; transform: translateY(-50%);
-    color: var(--muted); font-size: 18px; z-index: 1;
-  }
-  @media (max-width: 720px) { .step::after { content: "↓" !important; right: auto; left: 50%; top: auto; bottom: -18px; transform: translateX(-50%); } }
-  .step .n {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px; border-radius: 50%;
-    background: var(--accent); color: #fff; font-size: 12px; font-weight: 700;
-    margin-bottom: 8px;
-  }
-  .step h5 { font-size: 14px; margin-bottom: 6px; }
-  .step p { font-size: 13px; color: var(--muted); }
-  .step.rule { border-style: dashed; border-color: var(--solution); }
-  .step.rule h5 { color: var(--solution); }
+  /* 统计 */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 860px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; }
+  .stat .num { font-size: 26px; font-weight: 700; }
+  .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat.hl { border-color: var(--ticket); }
+  .stat.hl .num { color: var(--ticket); }
 
-  /* 档案镜像 */
-  .mirror { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
-  @media (max-width: 720px) { .mirror { grid-template-columns: 1fr; } }
-  .mirror pre { font-size: 12px; margin: 0; }
-
-  /* 建模思想 */
-  ol.ideas { margin: 0; padding: 0; list-style: none; counter-reset: idea; }
-  ol.ideas li {
-    counter-increment: idea; position: relative;
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 14px 16px 14px 56px; margin-bottom: 10px;
-  }
-  ol.ideas li::before {
-    content: counter(idea); position: absolute; left: 16px; top: 14px;
-    width: 26px; height: 26px; border-radius: 50%; background: var(--code-bg);
-    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700; color: var(--accent);
-  }
-  ol.ideas li b { display: block; font-size: 14.5px; margin-bottom: 3px; }
-  ol.ideas li span { font-size: 13.5px; color: var(--muted); }
-
-  footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 48px; }
+  .legend { margin-top: 12px; font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <header>
-    <h1>量潮客户支持 · 领域模型</h1>
-    <p>核心模型只有一个关系：一次问题的提出与解答（Ticket），蒸馏为沉淀下来的可复用知识（Solution）。</p>
-    <div class="entities">
-      <span class="badge ticket">Ticket 工单</span>
-      <span class="arrow">×</span>
-      <span class="badge solution">Solution 解决方案</span>
-    </div>
-  </header>
+<header>
+  <h1>支持云闭环原型</h1>
+  <p>检索应答 → 升级人工 → 蒸馏写回 → 复用计数。模型：Ticket × Solution。</p>
+  <span class="src">数据快照：data/profile（qtclass × 7）+ data/journal/2026-09-01 · 单一事实源在仓库，原型是实验快照</span>
+</header>
 
-  <!-- 实体 -->
-  <section>
-    <h2>两个实体</h2>
-    <div class="grid">
-      <div class="card">
-        <h3>Ticket <span style="color:var(--muted);font-weight:400;font-size:13px;">工单 · 对齐 GitHub Issue</span></h3>
-        <p class="one-liner">一次客户问题的提出与解答。一问多答 = issue + comments，没有独立的 Reply 实体。</p>
-        <table>
-          <tr><th>id</th><td>uuid</td></tr>
-          <tr><th>number</th><td>仓库内递增编号，对外引用用 <code>#192</code></td></tr>
-          <tr><th>title / body</th><td>问题标题与详情（Markdown）</td></tr>
-          <tr><th>state</th><td><code>open</code> | <code>closed</code>，无"已解决"中间态</td></tr>
-          <tr><th>author / labels</th><td>提交者；轻量标签（faq / bug / feature-request）</td></tr>
-          <tr><th>comments</th><td>时间序交流流，客户 / 支持 / ai 同流发言</td></tr>
-          <tr><th>created_at / closed_at</th><td>提出 / 关闭时间</td></tr>
-        </table>
-      </div>
-      <div class="card">
-        <h3>Solution <span style="color:var(--muted);font-weight:400;font-size:13px;">解决方案</span></h3>
-        <p class="one-liner">从已 closed 的 Ticket 蒸馏创建，不允许凭空出现——每条知识都有真实案例背书。</p>
-        <table>
-          <tr><th>id</th><td>uuid</td></tr>
-          <tr><th>title</th><td>"什么问题"一句话</td></tr>
-          <tr><th>content</th><td>解答本体（Markdown），来源引用写在开头；失效走归档不删除</td></tr>
-        </table>
-        <div style="margin-top:12px;font-size:13px;color:var(--muted);">
-          适用场景 / 解答 / 升级判据 / 来源与复用 —— 是 content 的推荐写法，不是模型字段。
-        </div>
-      </div>
+<div class="cols">
+  <!-- 左：问答台 -->
+  <section class="panel">
+    <h2 style="margin-top:0;">问答台 <span class="tag">第一级自动应答</span></h2>
+    <div id="chat">
+      <div class="msg sys">当日基线（journal 观察）：全部提问由人工接力应答，AI 参与率 0%——案例一、二本可由 Solution 库直接命中。在这个台子上用真实 Solution 数据验证第一级应答。</div>
+    </div>
+    <div class="askbar">
+      <input id="q" type="text" placeholder="输入问题，回车提问…" autocomplete="off">
+      <button id="send">提问</button>
+    </div>
+    <div class="chips">
+      <button class="chip">代金券怎么用？</button>
+      <button class="chip">课题申请发到哪个邮箱？</button>
+      <button class="chip">怎么了解公司的商务信息？</button>
+      <button class="chip">职级 -2 是什么意思？</button>
+      <button class="chip">链接打不开，说没有权限</button>
+      <button class="chip">想定制合同，批量采购</button>
     </div>
   </section>
 
-  <!-- Ticket 示例 -->
-  <section>
-    <h2>Ticket 实例 · #192</h2>
-    <p class="lead">字段对齐 GitHub Issue，因此渲染层可以直接复用 Issue 的视觉语言。示例基于 2026-09-01 实训基地群真实问答整理。</p>
-    <div class="tabs">
-      <button class="tab active" data-pane="issue-pane">Issue 视图</button>
-      <button class="tab" data-pane="json-pane">JSON</button>
-    </div>
-
-    <div id="issue-pane" class="pane active">
-      <div class="issue">
-        <div class="issue-head">
-          <span class="num">#192</span> <span class="badge ticket" style="background:#dafbe1;color:#1a7f37;">closed</span>
-          <h4>代金券怎么用？</h4>
-          <div class="meta">黄亮 提交 · 2026-09-01 15:04 · 标签 faq</div>
-        </div>
-        <div class="issue-body">收到 100 元券，想约老师一对一，可以直接指定对接人吗？</div>
-        <div class="comment">
-          <div class="who">赵子奕 <span class="role support">支持</span></div>
-          <div>券用于一对一沟通，群内沟通免费。预约价格与职级对应，见价目表。</div>
-          <div class="when">2026-09-01 17:14</div>
-        </div>
-        <div class="comment">
-          <div class="who">ai <span class="role ai">AI</span></div>
-          <div>参考 Solution #voucher-usage：挣券渠道为课堂实训任务（100 券/个）与众包（1000 元/任务）。</div>
-          <div class="when">2026-09-01 17:20</div>
-        </div>
-      </div>
-      <p class="lead" style="margin-top:10px;">AI 的回答也是一条 comment——人工 / AI 的区分是 <code>comment.author</code> 的属性，无需人参与比例由应用层从评论流推导。</p>
-    </div>
-
-    <div id="json-pane" class="pane">
-      <pre><code>{
-  "id": "t-0192",
-  "number": 192,
-  "title": "代金券怎么用？",
-  "body": "收到 100 元券，想约老师一对一，可以直接指定对接人吗？",
-  "state": "closed",
-  "author": "黄亮",
-  "labels": ["faq"],
-  "comments": [
-    {
-      "author": "赵子奕",
-      "body": "券用于一对一沟通，群内沟通免费。预约价格与职级对应，见价目表。",
-      "created_at": "2026-09-01T17:14:00+08:00"
-    },
-    {
-      "author": "ai",
-      "body": "参考 Solution #voucher-usage：挣券渠道为课堂实训任务（100 券/个）与众包（1000 元/任务）。",
-      "created_at": "2026-09-01T17:20:00+08:00"
-    }
-  ],
-  "created_at": "2026-09-01T15:04:00+08:00",
-  "closed_at": "2026-09-01T17:16:00+08:00"
-}</code></pre>
-    </div>
+  <!-- 右：知识库 -->
+  <section class="panel">
+    <h2 style="margin-top:0;">Solution 知识库 <span class="tag">data/profile/qtclass</span></h2>
+    <div class="kb-list" id="kb-list"></div>
+    <div class="kb-detail" id="kb-detail">点击左侧条目查看四段结构（适用场景 / 解答 / 升级判据 / 来源与复用）。</div>
   </section>
+</div>
 
-  <!-- Solution 示例 -->
-  <section>
-    <h2>Solution 实例 · #voucher-usage</h2>
-    <div class="mirror">
-      <div class="card">
-        <h3>Solution JSON</h3>
-        <pre><code>{
-  "id": "s-voucher-usage",
-  "title": "代金券怎么用、怎么挣",
-  "content": "来源：Ticket #192\n\n**使用规则**：代金券用于一对一沟通（按小时计价）；群内沟通免费。\n\n**挣券渠道**：课堂实训任务 100 券/个；众包任务基准 1000 元/个。\n\n**注意**：定价纠纷、兑换争议转人工核实，AI 不代答。"
-}</code></pre>
-      </div>
-      <div class="card">
-        <h3>档案条目镜像</h3>
-        <p class="one-liner" style="margin-bottom:10px;">Solution 与第二大脑档案仓库条目一一对应、双向同步——应用写数据，人也能直接在仓库维护。</p>
-        <pre><code># 代金券怎么用、怎么挣
-## 适用场景
-## 解答
-## 升级判据
-## 来源与复用</code></pre>
-      </div>
-    </div>
-  </section>
+<!-- 案例流 -->
+<section>
+  <h2>案例流（Ticket）<span class="tag">data/journal/2026-09-01</span></h2>
+  <div class="cases" id="cases"></div>
+  <p class="legend">蒸馏关系：journal 案例的「沉淀」字段是 profile 条目的种子；条目「来源与复用」记复用——复用率由此可数。</p>
+</section>
 
-  <!-- 蒸馏循环 -->
-  <section>
-    <h2>知识从实例中长出</h2>
-    <p class="lead">循环埋在 Ticket 与 Solution 的关系里，是模型结构本身，不是口号。</p>
-    <div class="loop">
-      <div class="step">
-        <span class="n">1</span>
-        <h5>问题进来</h5>
-        <p>客户提问形成 Ticket，open，评论流开始。</p>
-      </div>
-      <div class="step">
-        <span class="n">2</span>
-        <h5>解答并关闭</h5>
-        <p>支持人员 / AI 在评论流中应答，解答完成即 closed。</p>
-      </div>
-      <div class="step rule">
-        <span class="n" style="background:var(--solution);">3</span>
-        <h5>蒸馏为 Solution</h5>
-        <p>从已 closed 的 Ticket 蒸馏知识，来源引用写进 content 开头。</p>
-      </div>
-      <div class="step">
-        <span class="n">4</span>
-        <h5>复用加速</h5>
-        <p>后续同类问题由 AI 直接参考 Solution 应答，更快、更少升级。</p>
-      </div>
-    </div>
-  </section>
+<!-- 统计 -->
+<section>
+  <h2>闭环指标 <span class="tag">复用率可数</span></h2>
+  <div class="stats">
+    <div class="stat"><div class="num" id="st-total">0</div><div class="lbl">累计提问</div></div>
+    <div class="stat"><div class="num" id="st-ai">0</div><div class="lbl">AI 直接应答</div></div>
+    <div class="stat"><div class="num" id="st-human">0</div><div class="lbl">升级人工</div></div>
+    <div class="stat hl"><div class="num" id="st-rate">0%</div><div class="lbl">无需人参与比例</div></div>
+  </div>
+</section>
 
-  <!-- 建模思想 -->
-  <section>
-    <h2>建模思想</h2>
-    <ol class="ideas">
-      <li><b>领域只说业务语言</b><span>模型里只有 Ticket 和 Solution。语义检索、存储引擎、LLM 供应商都是技术选型，归应用层——换个技术栈，模型原样成立。</span></li>
-      <li><b>两个字段哲学：问答与知识</b><span>业务抽象到底只有两个动作：回答问题（Ticket）、积累知识（Solution）。状态、优先级、分派、统计都是派生需求。</span></li>
-      <li><b>知识从实例中长出</b><span>Solution 不允许凭空创建。解答 Ticket → 蒸馏 Solution → 参考复用 → 更多问题被更快解答，循环是模型结构本身。</span></li>
-      <li><b>格式沿用成熟惯例</b><span>Ticket 对齐 GitHub Issue，语义已被千万开发者验证：一问多答就是评论流，状态就是 open/closed，引用就是 #number。目标是零学习成本。</span></li>
-      <li><b>模型与档案互为镜像</b><span>qtcloud-support 是模型的可部署实现，档案仓库是人可维护的形态。两者一一对应、双向同步，数据不属于任何一个端。</span></li>
-    </ol>
-  </section>
-
-  <footer>量潮客户支持实验室 · 依据 docs/specification（quanttide-specification-of-customer-support v0.0.1）建模</footer>
 </div>
 
 <script>
-  document.querySelectorAll('.tab').forEach(function (tab) {
-    tab.addEventListener('click', function () {
-      document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
-      document.querySelectorAll('.pane').forEach(function (p) { p.classList.remove('active'); });
-      tab.classList.add('active');
-      document.getElementById(tab.dataset.pane).classList.add('active');
-    });
+/* ============ 数据快照：data/profile/qtclass（单一事实源在仓库） ============ */
+const SOLUTIONS = [
+  {
+    id: "voucher-usage", biz: "qtclass", type: "FAQ",
+    title: "代金券怎么用、怎么挣",
+    scene: "客户收到代金券后询问使用方式；想知道如何获取更多代金券；想约一对一咨询但不清楚价格。",
+    answer: [
+      "**使用规则**",
+      "- 代金券用于一对一沟通（咨询/预约），按小时计价",
+      "- 群内沟通不消耗代金券——群内提问免费",
+      "- 一对一预约价格与支持者职级对应：",
+      "| 职级 | 价格 |",
+      "| --- | --- |",
+      "| L5 | 500 元/小时 |",
+      "| L4 | 300 元/小时 |",
+      "| L3 | 200 元/小时 |",
+      "| L1 | 100 元/小时 |",
+      "**挣券渠道**",
+      "- 课堂实训任务：100 代金券/个（class.quanttide.com/learn）",
+      "- 众包任务：基准 1000 元/个（crowd.quanttide.com）"
+    ].join("\n"),
+    escalate: ["定制合同", "批量采购", "兑换纠纷", "过期争议"],
+    src: "journal/2026-09-01#案例一",
+    reuse: 0,
+    trigger: ["代金券", "券", "一对一", "挣券", "优惠券", "voucher", "怎么用"]
+  },
+  {
+    id: "task-application-email", biz: "qtclass", type: "FAQ",
+    title: "课题申请发到哪个邮箱",
+    scene: "准备提交课题申请的实训参与者，不清楚投递渠道；或拿到了课堂任务但不知道后续申请材料发往何处。",
+    answer: [
+      "两个邮箱职能不同：",
+      "| 邮箱 | 用途 | 费用 |",
+      "| --- | --- | --- |",
+      "| **hr 邮箱** | 提交课题申请 | — |",
+      "| **class@quanttide.com** | 获取课堂任务（如 GitHub 协作入门任务） | 免费 |",
+      "申请邮件要求：简明扼要、有礼貌（范文见 2026-08-27 精算方向同学的申请）。"
+    ].join("\n"),
+    escalate: ["无回复", "导师", "秘书"],
+    src: "journal/2026-08-28#案例一",
+    reuse: 0,
+    trigger: ["课题申请", "邮箱", "邮件", "投递", "申请发", "hr", "class@", "发到"]
+  },
+  {
+    id: "doc-permission-check", biz: "qtclass", type: "操作指引",
+    title: "提交课题/申请前检查文档访问权限",
+    scene: "通过飞书云文档、GitHub 仓库链接等方式提交课题申请或作业；评审方反馈\"没有权限可以访问\"。",
+    answer: [
+      "提交前先用**未参与编辑的账号**（或让同学帮忙）打开链接自查一遍：",
+      "1. 飞书云文档：链接分享范围设为\"互联网上获得链接的人可阅读\"（或明确添加评审人）",
+      "2. GitHub 仓库：确认仓库 public，或已邀请评审账号为 collaborator",
+      "3. 附带的项目文档、素材链接逐个检查，不要只查主文档",
+      "历史案例：2026-08-29 一位候选人的课题申请因权限问题首次评审失败，重新设置权限后通过——权限意识是协作第一课。"
+    ].join("\n"),
+    escalate: ["仍无法访问", "授权", "秘书"],
+    src: "journal/2026-08-29#案例一",
+    reuse: 0,
+    trigger: ["权限", "访问", "飞书", "打不开", "没有权限", "链接", "共享"]
+  },
+  {
+    id: "topic-deadline", biz: "qtclass", type: "制度",
+    title: "课题有 deadline 吗？错过会怎样",
+    scene: "参与实训考核的候选人担心课题提交时限；因课程、实习等原因暂时无法提交，想知道资格是否失效。",
+    answer: [
+      "**制度分情况**：",
+      "- 到 deadline 后仍未提交 → 默认视为不再参与（无法逐一区分参与意愿，统一按此处理）",
+      "- **活跃参与者有保留权利**：已参与课堂教学活动、有提交记录的同学，可随时在自己准备好时发起课题，不受 deadline 约束",
+      "- 通过首个教学任务后开通正式实训基地账号 = 长期学习权限，课题可以慢慢来",
+      "**长期免费学员通道**：向 class@quanttide.com 报名\"我要成为长期免费学员\"，享受与活跃学员同等的保留政策。"
+    ].join("\n"),
+    escalate: ["延期", "考试周", "生病", "异议", "复核"],
+    src: "journal/2026-08-30#案例二",
+    reuse: 0,
+    trigger: ["deadline", "截止", "期限", "过期", "考核资格", "错过", "没交"]
+  },
+  {
+    id: "rank-progress", biz: "qtclass", type: "制度",
+    title: "实训基地职级与成长进度条",
+    scene: "新加入实训基地的学员不清楚自己的位置和晋升路径；想知道从学员到入职的距离；收到定档通知（如 -2、-1）不理解含义。",
+    answer: [
+      "实训基地把学员、众包、招聘统一管理，用**负数职级**标明相对公司招聘标准的位置（\"负数是商场地下楼层，不代表能力是负的\"）：",
+      "| 职级 | 含义 |",
+      "| --- | --- |",
+      "| -3 | 纯学员，尚未能参与实际贡献 |",
+      "| -2 | 可参与一些小的贡献 |",
+      "| -1 | 可较独立地参与贡献 |",
+      "| **0** | 可入职（拥有公司身份） |",
+      "**晋升路径两大步骤**：先获得实训基地正式身份与职级 → 后获得公司身份。",
+      "**成长速度参考**：长期参与 3-6 个月，毕业时工作能力普遍高出同龄人一截；个别突出的同学 1-2 个月内飞速成长（内部最快记录：3 周内主导 6 个产品）。"
+    ].join("\n"),
+    escalate: ["结果有异议", "具体能力要求", "人事", "裁量"],
+    src: "journal/2026-08-29#案例三 + journal/2026-08-30#案例三",
+    reuse: 0,
+    trigger: ["职级", "晋升", "进度条", "成长", "定档", "-3", "-2", "-1", "级别", "评级", "学员"]
+  },
+  {
+    id: "business-info-channels", biz: "qtclass", type: "FAQ",
+    title: "商务信息从哪里了解",
+    scene: "想了解量潮的业务、产品、合作方式的潜在客户或实训候选人，询问商务信息的获取渠道。",
+    answer: [
+      "**渠道按优先级**",
+      "1. **GitHub 组织**（最主要来源）：github.com/quanttide——能开源的业务资料已基本开源，包括各产品仓库、文档站、工作手册",
+      "2. **微信公众号**：业务活动信息",
+      "**深度商务咨询**",
+      "- 商务经验属稀缺资源：公司层面商务专家仅三人（职级 L5 / L4 / L3）",
+      "- 建议路径：先通过开源资料自学 → 群内提问（免费）→ 确需深度一对一再用代金券预约（课堂实训场景见 voucher-usage）"
+    ].join("\n"),
+    escalate: ["报价", "合同", "合作意向", "未开源", "内部细节"],
+    src: "journal/2026-09-01#案例二",
+    reuse: 0,
+    trigger: ["商务", "业务信息", "渠道", "了解公司", "公众号", "github 组织", "合作", "信息获取"]
+  },
+  {
+    id: "email-workflow-evolution", biz: "qtclass", type: "背景",
+    title: "从邮件工作流到商务平台：业务演进背景",
+    scene: "候选人课题涉及商务流程自动化、邮件工作流升级、商务平台建设，需要理解业务现状与演进方向；AI 应答此类问题时必需的背景条目。",
+    answer: [
+      "**演进三个阶段**：",
+      "1. **群聊时代（过去）**：商务流程靠群聊维系——散、乱；企业微信接口受限，数据导不出来",
+      "2. **邮件工作流（当前，过渡态）**：E1-E18 编号节点，关键流程强制走邮箱。局限：邮箱自动化的致命难点是读海量上下文仍难判断工作状态，人工回复单封可行，批量必出错",
+      "3. **自研平台（目标态）**：商务前台（面向业务方）+ 通用商务后台；客户点击步骤替代通知步骤，流程大幅简化。开源仓库：qtcloud-business、qtdata",
+      "**真正的痛点在交付中后期**：客户变 + 内部变 → 项目 1/3 到一半开始失控。对策方向：交付验收清单管理，与订单核算绑定；沟通云\"共识链条\"从原始消息提炼共识。",
+      "**课题方法论**：判断标准可后置——程序预留 01 变量或分数作判断接口，标准由商务侧后注入；从海量手册挖产品需求（讲故事法：先让 AI 讲主线故事，再从故事提炼需求）。"
+    ].join("\n"),
+    escalate: ["未开源的内部 API", "具体商务数据", "独立重构", "评审"],
+    src: "journal/2026-08-30#案例一",
+    reuse: 0,
+    trigger: ["邮件工作流", "商务平台", "冷启动", "接口先行", "标准后置", "演进", "E1", "流程自动化"]
+  }
+];
+
+/* ============ 数据快照：data/journal/2026-09-01（Ticket 案例流） ============ */
+const CASES = [
+  {
+    no: "案例一", title: "代金券使用咨询", customer: "实训候选人 H（课题方向：商务流程状态数据）",
+    q: "收到 100 元优惠券后提出两个疑问：1）券怎么用？能否直接指定对接人？2）确认课题方向是否可行",
+    a: "券用于一对一沟通；群内沟通不消耗券。内部繁忙，商务同事无法保证及时一对一——建议在群内寻找对应方向的成员应答；确需一对一时按预约定价（500 / 300 / 200 / 100 元每小时）。挣券渠道：课堂实训任务 100 券/个、众包任务基准 1000 元/个。",
+    status: "已解决", distill: "定价规则、券获取渠道已被显性表述——咨询类，可直接入解决方案库",
+    mapped: "voucher-usage"
+  },
+  {
+    no: "案例二", title: "商务信息获取渠道咨询", customer: "实训候选人 H（追问）",
+    q: "如何了解公司的商务信息？",
+    a: "GitHub 组织是最主要来源：能开源的已基本开源，其余在专家脑中。微信公众号：业务活动信息。商务经验贵的原因：公司层面商务专家仅三人，职级 L5 / L4 / L3。",
+    status: "已解决", distill: "\"专家在脑中\"= 隐性经验未蒸馏——正是支持云批蒸馏要处理的对象",
+    mapped: "business-info-channels"
+  },
+  {
+    no: "案例三", title: "邮件工作流课题的冷启动与接口设计", customer: "实训候选人 H 及同方向同学",
+    q: "商务平台课题在缺乏商务初始上下文的条件下如何开始？邮件工作流如何程序化？",
+    a: "邮件工作流文档中蕴含的流程已是核心流程，AI 根据上下文总结即可翻译成工作流文档。判断标准可后置：程序预留 01 变量或分数作为判断接口，标准由商务侧后续注入。资源极度匮乏是创业冷启动的常见困境——组织者要学会找资源、协调信息、协调人。",
+    status: "已解决（方法论层面）", distill: "\"接口先行、标准后置\"设计模式；冷启动方法论",
+    mapped: "email-workflow-evolution"
+  }
+];
+
+/* ============ 极简 Markdown 渲染 ============ */
+function renderMd(src) {
+  const lines = src.split("\n");
+  let html = "", inUl = false, inTable = false;
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = s => esc(s)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`(.+?)`/g, "<code>$1</code>")
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>');
+  const closeUl = () => { if (inUl) { html += "</ul>"; inUl = false; } };
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) { closeUl(); continue; }
+    if (line.startsWith("|") && line.endsWith("|")) {
+      closeUl();
+      const cells = line.slice(1, -1).split("|").map(c => c.trim());
+      const isSep = cells.every(c => /^-+$/.test(c));
+      if (isSep) { inTable = true; continue; }
+      if (inTable) { html += "<tr>" + cells.map(c => "<td>" + inline(c) + "</td>").join("") + "</tr>"; continue; }
+      html += "<table><tr>" + cells.map(c => "<th>" + inline(c) + "</th>").join("") + "</tr>";
+      continue;
+    }
+    if (inTable) { html += "</table>"; inTable = false; }
+    if (/^\d+\.\s/.test(line)) {
+      closeUl();
+      html += "<p>" + inline(line) + "</p>";
+    } else if (line.startsWith("- ")) {
+      if (!inUl) { html += "<ul>"; inUl = true; }
+      html += "<li>" + inline(line.slice(2)) + "</li>";
+    } else if (line.startsWith("**")) {
+      closeUl();
+      html += "<p>" + inline(line) + "</p>";
+    } else {
+      closeUl();
+      html += "<p>" + inline(line) + "</p>";
+    }
+  }
+  closeUl();
+  if (inTable) html += "</table>";
+  return html;
+}
+
+/* ============ 检索应答（第一级） ============ */
+function splitWords(q) {
+  return q.toLowerCase().split(/[\s，。？、,.?!：:；;（）()【】\[\]"'“”‘’\-—/]+/)
+    .filter(w => w.length >= 2);
+}
+function score(q, s) {
+  const ql = q.toLowerCase();
+  let sc = 0;
+  const body = (s.title + s.scene + s.answer + s.escalate.join(" ") + s.trigger.join(" ")).toLowerCase();
+  s.trigger.forEach(k => { if (ql.includes(k.toLowerCase())) sc += 3; });
+  splitWords(q).forEach(w => { if (body.includes(w)) sc += 1; });
+  // 子串级匹配：中文长问句（如“群内沟通免费吗”）不靠分词，靠连续子串命中
+  for (let i = 0; i < ql.length - 1; i++) {
+    for (let len = 2; len <= 4 && i + len <= ql.length; len++) {
+      if (body.includes(ql.slice(i, i + len))) sc += 1;
+    }
+  }
+  return sc;
+}
+function escalateHit(q, s) {
+  const ql = q.toLowerCase();
+  for (const k of s.escalate) {
+    const kl = k.toLowerCase();
+    if (ql.includes(kl)) return k;
+    // 宽松：判据短语的任一 2-gram 命中即转人工（升级是安全方向）
+    for (let i = 0; i < kl.length - 1; i++) {
+      if (ql.includes(kl.slice(i, i + 2))) return k;
+    }
+  }
+  return undefined;
+}
+function answer(q) {
+  const ranked = SOLUTIONS.map(s => ({ s, sc: score(q, s) })).sort((a, b) => b.sc - a.sc);
+  const top = ranked[0];
+  if (!top || top.sc < 2) return { hit: false, reason: "未命中任何 Solution 条目" };
+  const hitEsc = escalateHit(q, top.s);
+  if (hitEsc) return { hit: false, s: top.s, esc: hitEsc, reason: "命中升级判据「" + hitEsc + "」" };
+  top.s.reuse++;
+  return { hit: true, s: top.s };
+}
+
+/* ============ 问答台 ============ */
+const chat = document.getElementById("chat");
+const qInput = document.getElementById("q");
+function pushMsg(kind, html) {
+  const d = document.createElement("div");
+  d.className = "msg " + kind;
+  d.innerHTML = html;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+let asked = 0, aiCount = 0, humanCount = 0;
+
+function ask(raw) {
+  const q = raw.trim();
+  if (!q) return;
+  asked++;
+  pushMsg("user", escapeHtml(q));
+  const r = answer(q);
+  if (r.hit) {
+    aiCount++;
+    pushMsg("ai",
+      '<span class="role-tag">AI · Solution ' + r.s.id + '</span>' +
+      renderMd(r.s.answer) +
+      '<span class="src">来源：' + escapeHtml(r.s.src) + ' · 命中复用次数 ' + r.s.reuse + '</span>');
+  } else {
+    humanCount++;
+    pushMsg("human",
+      '<span class="role-tag">升级人工</span>' +
+      escapeHtml(r.reason) + '，等待支持人员应答。');
+    if (r.s) pushMsg("sys", '已引用候选 Solution ' + r.s.id + ' 作为人工应答的上下文。');
+  }
+  updateStats();
+}
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function updateStats() {
+  document.getElementById("st-total").textContent = asked;
+  document.getElementById("st-ai").textContent = aiCount;
+  document.getElementById("st-human").textContent = humanCount;
+  document.getElementById("st-rate").textContent = asked ? Math.round(aiCount / asked * 100) + "%" : "0%";
+}
+document.getElementById("send").addEventListener("click", () => { ask(qInput.value); qInput.value = ""; });
+qInput.addEventListener("keydown", e => { if (e.key === "Enter") { ask(qInput.value); qInput.value = ""; } });
+document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => ask(c.textContent)));
+
+/* ============ 知识库 ============ */
+const kbList = document.getElementById("kb-list");
+const kbDetail = document.getElementById("kb-detail");
+SOLUTIONS.forEach((s, i) => {
+  const item = document.createElement("div");
+  item.className = "kb-item" + (i === 0 ? " active" : "");
+  item.innerHTML = "<h4>" + escapeHtml(s.title) + "</h4><div class='meta'>" +
+    escapeHtml(s.id) + " · " + escapeHtml(s.biz) + " · " + escapeHtml(s.type) +
+    " · 复用 " + s.reuse + "</div>";
+  item.addEventListener("click", () => {
+    document.querySelectorAll(".kb-item").forEach(e => e.classList.remove("active"));
+    item.classList.add("active");
+    kbDetail.innerHTML =
+      "<div class='sec'><div class='sec-title'>适用场景</div><div class='md'>" + renderMd(s.scene) + "</div></div>" +
+      "<div class='sec'><div class='sec-title'>解答</div><div class='md'>" + renderMd(s.answer) + "</div></div>" +
+      "<div class='sec'><div class='sec-title'>升级判据</div><div class='md'>" + renderMd(s.escalate.join("；")) + "</div></div>" +
+      "<div class='sec'><div class='sec-title'>来源与复用</div><div class='md'>来源：" + escapeHtml(s.src) + " · 复用：" + s.reuse + "</div></div>";
   });
+  kbList.appendChild(item);
+});
+
+/* ============ 案例流 ============ */
+const casesEl = document.getElementById("cases");
+CASES.forEach(c => {
+  const sol = SOLUTIONS.find(s => s.id === c.mapped);
+  const d = document.createElement("div");
+  d.className = "case";
+  d.innerHTML =
+    "<h4>" + escapeHtml(c.no) + " · " + escapeHtml(c.title) + "</h4>" +
+    "<div class='q'>" + escapeHtml(c.q) + "</div>" +
+    "<div class='field'><b>解答</b>：" + escapeHtml(c.a) + "</div>" +
+    "<div class='field'><b>状态</b>：" + escapeHtml(c.status) + "</div>" +
+    "<div class='field'><b>沉淀</b>：" + escapeHtml(c.distill) + "</div>" +
+    "<div class='distilled'>已蒸馏 → " + (sol ? escapeHtml(sol.title) : c.mapped) + "</div>";
+  casesEl.appendChild(d);
+});
 </script>
 </body>
 </html>
