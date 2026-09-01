@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>支持云闭环原型 · 数据源：data/profile</title>
+<title>支持云闭环原型 · 问答 / 工单 / 知识库</title>
 <style>
   :root {
     --bg: #f6f8fa; --panel: #ffffff; --border: #d0d7de;
     --text: #1f2328; --muted: #59636e; --accent: #0969da;
-    --ticket: #1a7f37; --solution: #9a6700; --danger: #cf222e;
+    --ticket: #1a7f37; --solution: #9a6700;
     --code-bg: #f6f8fa; --radius: 8px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -17,45 +17,68 @@
     background: var(--bg); color: var(--text); line-height: 1.6; padding: 24px 16px 64px;
   }
   .wrap { max-width: 1080px; margin: 0 auto; }
-  header { text-align: center; padding: 12px 0 28px; }
-  header h1 { font-size: 24px; font-weight: 700; }
-  header p { color: var(--muted); margin-top: 8px; font-size: 14px; }
+
+  /* 头部 + 导航 */
+  header { text-align: center; padding: 12px 0 20px; }
+  header h1 { font-size: 23px; font-weight: 700; }
+  header p { color: var(--muted); margin-top: 6px; font-size: 14px; }
   header .src {
     display: inline-block; margin-top: 10px; font-size: 12px; color: var(--muted);
     background: var(--code-bg); border: 1px solid var(--border); border-radius: 999px; padding: 3px 14px;
   }
-  h2 { font-size: 17px; font-weight: 700; padding-bottom: 8px; margin: 28px 0 14px; border-bottom: 1px solid var(--border); }
+  nav {
+    display: flex; justify-content: center; gap: 4px; margin-top: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  nav a {
+    text-decoration: none; color: var(--muted); font-size: 14px; font-weight: 500;
+    padding: 9px 26px; border-radius: 8px 8px 0 0; border: 1px solid transparent; border-bottom: none;
+  }
+  nav a:hover { color: var(--text); }
+  nav a.active { background: var(--panel); border-color: var(--border); color: var(--text); font-weight: 700; }
+
+  /* 视图切换 */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  h2 { font-size: 17px; font-weight: 700; padding-bottom: 8px; margin: 24px 0 14px; border-bottom: 1px solid var(--border); }
   h2 .tag { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 8px; }
-  .muted { color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .legend { margin-top: 10px; font-size: 12px; color: var(--muted); }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
 
-  /* 布局 */
-  .cols { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; align-items: start; }
-  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
-  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
-
   /* 问答台 */
-  #chat { height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 10px; }
+  #chat {
+    height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 10px;
+  }
   .msg { max-width: 85%; padding: 9px 12px; border-radius: 10px; font-size: 13.5px; white-space: pre-wrap; }
   .msg.user { align-self: flex-end; background: #0969da; color: #fff; }
   .msg.ai { align-self: flex-start; background: #f6f8fa; border: 1px solid var(--border); }
   .msg.human { align-self: flex-start; background: #fff8c5; border: 1px solid #bf870033; }
-  .msg.sys { align-self: center; background: none; border: 1px dashed var(--border); color: var(--muted); font-size: 12.5px; text-align: center; }
+  .msg.sys { align-self: center; background: none; border: 1px dashed var(--border); color: var(--muted); font-size: 12.5px; text-align: center; max-width: 95%; }
   .msg .role-tag { display: block; font-size: 11px; font-weight: 700; margin-bottom: 3px; }
   .msg.ai .role-tag { color: var(--accent); }
   .msg.human .role-tag { color: var(--solution); }
   .msg .src { display: block; margin-top: 6px; font-size: 11.5px; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 5px; }
-
   .askbar { display: flex; gap: 8px; margin-top: 10px; }
   .askbar input { flex: 1; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13.5px; font-family: inherit; }
   .askbar button { padding: 9px 18px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 13.5px; cursor: pointer; }
-  .askbar button:disabled { opacity: .5; cursor: default; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .chip {
     border: 1px solid var(--border); background: var(--panel); border-radius: 999px;
     padding: 3px 11px; font-size: 12px; cursor: pointer; color: var(--muted); font-family: inherit;
   }
   .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 统计 */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; }
+  .stat .num { font-size: 26px; font-weight: 700; }
+  .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat.hl { border-color: var(--ticket); }
+  .stat.hl .num { color: var(--ticket); }
 
   /* markdown 渲染 */
   .md p { margin: 4px 0; }
@@ -65,39 +88,34 @@
   .md table { border-collapse: collapse; margin: 6px 0; font-size: 12.5px; width: 100%; }
   .md th, .md td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
   .md th { background: var(--code-bg); font-weight: 600; }
-  .md a { color: var(--accent); }
 
-  /* 知识库 */
-  .kb-list { max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  /* 工单页 */
+  .cases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 860px) { .cases { grid-template-columns: 1fr; } }
+  .case { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; }
+  .case h4 { font-size: 14px; margin-bottom: 4px; }
+  .case .meta { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .case .field { margin-top: 6px; }
+  .case .field b { color: var(--muted); font-size: 12px; }
+  .case .badge {
+    display: inline-block; font-size: 11px; border-radius: 999px; padding: 1px 9px;
+    background: #dafbe1; color: var(--ticket); margin-left: 6px;
+  }
+  .case .distilled { display: inline-block; margin-top: 8px; font-size: 11.5px; border-radius: 999px; padding: 1px 9px; background: #fbefff; color: #8250df; }
+
+  /* 知识库页 */
+  .kb { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .kb { grid-template-columns: 1fr; } }
+  .kb-list { max-height: 560px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
   .kb-item { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
   .kb-item:hover { border-color: var(--accent); }
   .kb-item.active { border-color: var(--accent); background: #f0f6ff; }
   .kb-item h4 { font-size: 13.5px; font-weight: 600; }
   .kb-item .meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-  .kb-detail { border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; padding: 12px; font-size: 13px; max-height: 400px; overflow-y: auto; }
-  .kb-detail .sec { margin-bottom: 8px; }
-  .kb-detail .sec-title { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 2px; }
-
-  /* 案例流 */
-  .cases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  @media (max-width: 860px) { .cases { grid-template-columns: 1fr; } }
-  .case { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; }
-  .case h4 { font-size: 14px; margin-bottom: 4px; }
-  .case .q { color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }
-  .case .field { margin-top: 6px; }
-  .case .field b { color: var(--muted); font-size: 12px; }
-  .case .distilled { display: inline-block; margin-top: 8px; font-size: 11.5px; border-radius: 999px; padding: 1px 9px; background: #dafbe1; color: var(--ticket); }
-
-  /* 统计 */
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  @media (max-width: 860px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; }
-  .stat .num { font-size: 26px; font-weight: 700; }
-  .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .stat.hl { border-color: var(--ticket); }
-  .stat.hl .num { color: var(--ticket); }
-
-  .legend { margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .kb-detail { border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-size: 13px; }
+  .kb-detail .sec { margin-bottom: 12px; }
+  .kb-detail .sec-title { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 3px; }
+  .kb-detail .empty { color: var(--muted); font-size: 13px; }
 </style>
 </head>
 <body>
@@ -107,11 +125,16 @@
   <h1>支持云闭环原型</h1>
   <p>检索应答 → 升级人工 → 蒸馏写回 → 复用计数。模型：Ticket × Solution。</p>
   <span class="src">数据快照：data/profile（qtclass × 7）+ data/journal/2026-09-01 · 单一事实源在仓库，原型是实验快照</span>
+  <nav>
+    <a href="#qa" class="active">问答</a>
+    <a href="#ticket">工单</a>
+    <a href="#kb">知识库</a>
+  </nav>
 </header>
 
-<div class="cols">
-  <!-- 左：问答台 -->
-  <section class="panel">
+<!-- ======== 问答 ======== -->
+<section id="view-qa" class="view active">
+  <div class="panel">
     <h2 style="margin-top:0;">问答台 <span class="tag">第一级自动应答</span></h2>
     <div id="chat">
       <div class="msg sys">当日基线（journal 观察）：全部提问由人工接力应答，AI 参与率 0%——案例一、二本可由 Solution 库直接命中。在这个台子上用真实 Solution 数据验证第一级应答。</div>
@@ -128,25 +151,8 @@
       <button class="chip">链接打不开，说没有权限</button>
       <button class="chip">想定制合同，批量采购</button>
     </div>
-  </section>
+  </div>
 
-  <!-- 右：知识库 -->
-  <section class="panel">
-    <h2 style="margin-top:0;">Solution 知识库 <span class="tag">data/profile/qtclass</span></h2>
-    <div class="kb-list" id="kb-list"></div>
-    <div class="kb-detail" id="kb-detail">点击左侧条目查看四段结构（适用场景 / 解答 / 升级判据 / 来源与复用）。</div>
-  </section>
-</div>
-
-<!-- 案例流 -->
-<section>
-  <h2>案例流（Ticket）<span class="tag">data/journal/2026-09-01</span></h2>
-  <div class="cases" id="cases"></div>
-  <p class="legend">蒸馏关系：journal 案例的「沉淀」字段是 profile 条目的种子；条目「来源与复用」记复用——复用率由此可数。</p>
-</section>
-
-<!-- 统计 -->
-<section>
   <h2>闭环指标 <span class="tag">复用率可数</span></h2>
   <div class="stats">
     <div class="stat"><div class="num" id="st-total">0</div><div class="lbl">累计提问</div></div>
@@ -156,9 +162,34 @@
   </div>
 </section>
 
+<!-- ======== 工单 ======== -->
+<section id="view-ticket" class="view">
+  <h2 style="margin-top:0;">工单（Ticket）<span class="tag">data/journal/2026-09-01</span></h2>
+  <div class="cases" id="cases"></div>
+  <p class="legend">蒸馏关系：journal 案例的「沉淀」字段是 profile 条目的种子；条目「来源与复用」记复用——复用率由此可数。工单就是对话容器，知识从已解决工单中长出。</p>
+</section>
+
+<!-- ======== 知识库 ======== -->
+<section id="view-kb" class="view">
+  <h2 style="margin-top:0;">知识库（Solution）<span class="tag">data/profile/qtclass · 一条解决方案一个条目</span></h2>
+  <div class="kb">
+    <div class="kb-list" id="kb-list"></div>
+    <div class="kb-detail" id="kb-detail"><span class="empty">点击左侧条目查看四段结构（适用场景 / 解答 / 升级判据 / 来源与复用）。</span></div>
+  </div>
+</section>
+
 </div>
 
 <script>
+/* ============ 导航（hash 路由） ============ */
+function show(view) {
+  if (!view) view = "qa";
+  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("active", a.getAttribute("href") === "#" + view));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + view));
+}
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+show(location.hash.slice(1));
+
 /* ============ 数据快照：data/profile/qtclass（单一事实源在仓库） ============ */
 const SOLUTIONS = [
   {
@@ -322,8 +353,7 @@ function renderMd(src) {
   const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const inline = s => esc(s)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/`(.+?)`/g, "<code>$1</code>")
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>');
+    .replace(/`(.+?)`/g, "<code>$1</code>");
   const closeUl = () => { if (inUl) { html += "</ul>"; inUl = false; } };
   for (const raw of lines) {
     const line = raw.trim();
@@ -338,15 +368,9 @@ function renderMd(src) {
       continue;
     }
     if (inTable) { html += "</table>"; inTable = false; }
-    if (/^\d+\.\s/.test(line)) {
-      closeUl();
-      html += "<p>" + inline(line) + "</p>";
-    } else if (line.startsWith("- ")) {
+    if (line.startsWith("- ")) {
       if (!inUl) { html += "<ul>"; inUl = true; }
       html += "<li>" + inline(line.slice(2)) + "</li>";
-    } else if (line.startsWith("**")) {
-      closeUl();
-      html += "<p>" + inline(line) + "</p>";
     } else {
       closeUl();
       html += "<p>" + inline(line) + "</p>";
@@ -368,7 +392,6 @@ function score(q, s) {
   const body = (s.title + s.scene + s.answer + s.escalate.join(" ") + s.trigger.join(" ")).toLowerCase();
   s.trigger.forEach(k => { if (ql.includes(k.toLowerCase())) sc += 3; });
   splitWords(q).forEach(w => { if (body.includes(w)) sc += 1; });
-  // 子串级匹配：中文长问句（如“群内沟通免费吗”）不靠分词，靠连续子串命中
   for (let i = 0; i < ql.length - 1; i++) {
     for (let len = 2; len <= 4 && i + len <= ql.length; len++) {
       if (body.includes(ql.slice(i, i + len))) sc += 1;
@@ -381,7 +404,6 @@ function escalateHit(q, s) {
   for (const k of s.escalate) {
     const kl = k.toLowerCase();
     if (ql.includes(kl)) return k;
-    // 宽松：判据短语的任一 2-gram 命中即转人工（升级是安全方向）
     for (let i = 0; i < kl.length - 1; i++) {
       if (ql.includes(kl.slice(i, i + 2))) return k;
     }
@@ -444,9 +466,32 @@ document.getElementById("send").addEventListener("click", () => { ask(qInput.val
 qInput.addEventListener("keydown", e => { if (e.key === "Enter") { ask(qInput.value); qInput.value = ""; } });
 document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => ask(c.textContent)));
 
-/* ============ 知识库 ============ */
+/* ============ 工单页 ============ */
+const casesEl = document.getElementById("cases");
+CASES.forEach(c => {
+  const sol = SOLUTIONS.find(s => s.id === c.mapped);
+  const d = document.createElement("div");
+  d.className = "case";
+  d.innerHTML =
+    "<h4>" + escapeHtml(c.no) + " · " + escapeHtml(c.title) + "<span class='badge'>" + escapeHtml(c.status) + "</span></h4>" +
+    "<div class='meta'>客户：" + escapeHtml(c.customer) + "</div>" +
+    "<div class='q'>" + escapeHtml(c.q) + "</div>" +
+    "<div class='field'><b>解答</b>：" + escapeHtml(c.a) + "</div>" +
+    "<div class='field'><b>沉淀</b>：" + escapeHtml(c.distill) + "</div>" +
+    "<div class='distilled'>已蒸馏 → " + (sol ? escapeHtml(sol.title) : c.mapped) + "</div>";
+  casesEl.appendChild(d);
+});
+
+/* ============ 知识库页 ============ */
 const kbList = document.getElementById("kb-list");
 const kbDetail = document.getElementById("kb-detail");
+function renderDetail(s) {
+  kbDetail.innerHTML =
+    "<div class='sec'><div class='sec-title'>适用场景</div><div class='md'>" + renderMd(s.scene) + "</div></div>" +
+    "<div class='sec'><div class='sec-title'>解答</div><div class='md'>" + renderMd(s.answer) + "</div></div>" +
+    "<div class='sec'><div class='sec-title'>升级判据</div><div class='md'>" + renderMd(s.escalate.join("；")) + "</div></div>" +
+    "<div class='sec'><div class='sec-title'>来源与复用</div><div class='md'>来源：" + escapeHtml(s.src) + " · 复用：" + s.reuse + "</div></div>";
+}
 SOLUTIONS.forEach((s, i) => {
   const item = document.createElement("div");
   item.className = "kb-item" + (i === 0 ? " active" : "");
@@ -456,30 +501,11 @@ SOLUTIONS.forEach((s, i) => {
   item.addEventListener("click", () => {
     document.querySelectorAll(".kb-item").forEach(e => e.classList.remove("active"));
     item.classList.add("active");
-    kbDetail.innerHTML =
-      "<div class='sec'><div class='sec-title'>适用场景</div><div class='md'>" + renderMd(s.scene) + "</div></div>" +
-      "<div class='sec'><div class='sec-title'>解答</div><div class='md'>" + renderMd(s.answer) + "</div></div>" +
-      "<div class='sec'><div class='sec-title'>升级判据</div><div class='md'>" + renderMd(s.escalate.join("；")) + "</div></div>" +
-      "<div class='sec'><div class='sec-title'>来源与复用</div><div class='md'>来源：" + escapeHtml(s.src) + " · 复用：" + s.reuse + "</div></div>";
+    renderDetail(s);
   });
   kbList.appendChild(item);
 });
-
-/* ============ 案例流 ============ */
-const casesEl = document.getElementById("cases");
-CASES.forEach(c => {
-  const sol = SOLUTIONS.find(s => s.id === c.mapped);
-  const d = document.createElement("div");
-  d.className = "case";
-  d.innerHTML =
-    "<h4>" + escapeHtml(c.no) + " · " + escapeHtml(c.title) + "</h4>" +
-    "<div class='q'>" + escapeHtml(c.q) + "</div>" +
-    "<div class='field'><b>解答</b>：" + escapeHtml(c.a) + "</div>" +
-    "<div class='field'><b>状态</b>：" + escapeHtml(c.status) + "</div>" +
-    "<div class='field'><b>沉淀</b>：" + escapeHtml(c.distill) + "</div>" +
-    "<div class='distilled'>已蒸馏 → " + (sol ? escapeHtml(sol.title) : c.mapped) + "</div>";
-  casesEl.appendChild(d);
-});
+renderDetail(SOLUTIONS[0]);
 </script>
 </body>
 </html>
